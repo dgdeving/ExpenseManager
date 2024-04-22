@@ -3,18 +3,15 @@ import ExpenseRepository from '../Data/Repositories/ExpenseRepository';
 import CategoryRepository from '../Data/Repositories/CategoryRepository';
 import ReoccurrenceRepository from '../Data/Repositories/RecurrenceRepository';
 import React, { useEffect, useState } from 'react';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import RonLogo from "./../assets/Logo/RON.svg";
-import CalendarIcon from "./../assets/Icons/calendar_icon.svg";
-import { categoryUIObjects } from '../UI/CategoryIcons';
-import BackIcon from "./../assets/Icons/back_icon.svg"
-
+import { categoryUIObjects } from '../constants/categoryTypes';
+import { recurrenceUIObjects } from '../constants/recurrenceTypes';
+import NavigationCreateExpenseMenu from "../UI/NavigationCreateExpenseMenu"
+import ExpenseForm from "../UI/ExpenseForm"
 
 
 const UpdateExpense = ({ navigation, route }) => {
 
     const id = route.params.expenseId;
-    //console.log(id);
 
     const [categories, setCategories] = useState([]);
     const [recurrences, setRecurrences] = useState([]);
@@ -27,6 +24,30 @@ const UpdateExpense = ({ navigation, route }) => {
     const [categoryUIMapping, setCategoryUIMapping] = useState({});
     const [recurrenceUIMapping, setRecurrenceUIMapping] = useState({});
 
+    useEffect(() => {
+        fetchCategories();
+        fetchRecurrences();
+    }, []);
+
+    useEffect(() => {
+        if (categories.length > 0) {
+            const mappedCategories = mapCategories(categoryUIObjects, categories);
+            setCategoryUIMapping(mappedCategories);
+        }
+    }, [categories]);
+
+    useEffect(() => {
+        if (recurrences.length > 0) {
+            const mappedRecurrences = mapRecurrences(recurrenceUIObjects, recurrences);
+            setRecurrenceUIMapping(mappedRecurrences);
+        }
+    }, [recurrences]);
+
+    useEffect(() => {
+        if (categoryUIMapping !== null && recurrenceUIMapping !== null) {
+            fetchExpenseDetails(id);
+        }
+    }, [categoryUIMapping, recurrenceUIMapping],);
 
     const renderCategoryIcons = () => {
         return categoryUIObjects.map((category) => (
@@ -43,11 +64,6 @@ const UpdateExpense = ({ navigation, route }) => {
         ));
     };
 
-    const recurrenceUIObjects = [
-        { id: 'Once', label: 'Once' },
-        { id: 'Daily', label: 'Daily' },
-        { id: 'Monthly', label: 'Monthly' },
-    ];
 
     const renderRecurrenceButtons = () => {
         //console.log(recurrence);
@@ -67,7 +83,6 @@ const UpdateExpense = ({ navigation, route }) => {
         ));
     };
 
-
     const showDatepicker = () => {
         setShowDatePicker(true);
     };
@@ -78,41 +93,6 @@ const UpdateExpense = ({ navigation, route }) => {
             setSelectedDate(selectedDate);
         }
     };
-
-    useEffect(() => {
-        console.log('First useEffect called'); // Log when this useEffect is called
-
-        fetchCategories();
-        fetchRecurrences();
-    }, []);
-
-
-    useEffect(() => {
-        console.log('Second useEffect called'); // Log when this useEffect is called
-
-        if (categories.length > 0) {
-            const mappedCategories = mapCategories(categoryUIObjects, categories);
-            setCategoryUIMapping(mappedCategories);
-        }
-    }, [categories]);
-
-
-    useEffect(() => {
-        console.log('Third useEffect called');
-        if (recurrences.length > 0) {
-            const mappedRecurrences = mapRecurrences(recurrenceUIObjects, recurrences);
-            setRecurrenceUIMapping(mappedRecurrences);
-        }
-    }, [recurrences]);
-
-    useEffect(() => {
-        console.log('Forth useEffect called'); // Log when this useEffect is called
-
-        if (categoryUIMapping !== null && recurrenceUIMapping !== null) {
-            fetchExpenseDetails(id);
-        }
-
-    }, [categoryUIMapping, recurrenceUIMapping],);
 
     const fetchExpenseDetails = async (expenseId) => {
 
@@ -174,7 +154,6 @@ const UpdateExpense = ({ navigation, route }) => {
         }, {});
     };
 
-
     const mapRecurrences = (uiObjects, fetchedRecurrences) => {
         //console.log(fetchedRecurrences);
         return fetchedRecurrences.reduce((mapping, fetchedRecurrence) => {
@@ -229,95 +208,23 @@ const UpdateExpense = ({ navigation, route }) => {
         }
     };
 
-
     return (
         <View style={styles.container}>
-            <View style={styles.titleContainer}>
-                <TouchableOpacity style={styles.backIconContainer} onPress={() => {
-                    navigation.navigate('Expenses');
-                }}>
-                    <BackIcon width={25} height={25} />
-                </TouchableOpacity>
-                <Text style={styles.titleText}>UPDATE</Text>
-            </View>
 
-            <View style={styles.inputContainer}>
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text style={styles.textTag}>Amount</Text>
-                    </View>
-                    <View style={styles.inputContainerAmount}>
-                        {/* Add input for amount */}
-                        <View style={styles.inputAmountWithIcon}>
-                            <RonLogo width={25} height={25} style={styles.icon} />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter amount"
-                                keyboardType="numeric"
-                                onChangeText={(text) => setAmount(text)}
-                                value={amount}
-                            />
-                        </View>
-                    </View>
-                </View>
+            <NavigationCreateExpenseMenu navigation={navigation} />
+            <ExpenseForm
+                amount={amount}
+                setAmount={(text) => setAmount(text)}
+                selectedDate={selectedDate}
+                showDatePicker={showDatePicker}
+                setShowDatePicker={setShowDatePicker}
+                handleDateChange={handleDateChange}
+                renderCategoryIcons={renderCategoryIcons}
+                renderRecurrenceButtons={renderRecurrenceButtons}
+                description={description}
+                setDescription={setDescription}
+            />
 
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text style={styles.textTag}>Date</Text>
-                    </View>
-                    <TouchableOpacity onPress={showDatepicker}>
-                        <View style={styles.inputContainerDate}>
-                            <View style={styles.inputDateWithIcon}>
-                                <Text style={styles.input}>
-                                    {selectedDate.toLocaleDateString()}
-                                </Text>
-                                <CalendarIcon width={25} height={25} style={styles.calendarIcon} />
-                            </View>
-                            {showDatePicker && (
-                                <DateTimePicker
-                                    value={selectedDate}
-                                    mode="date"
-                                    display="default"
-                                    onChange={handleDateChange}
-                                />
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text style={styles.textTag}>Category</Text>
-                    </View>
-                    <View style={styles.categoryContainer}>
-                        {renderCategoryIcons()}
-                    </View>
-                </View>
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text style={styles.textTag}>Reoccurence</Text>
-                    </View>
-                    <View style={styles.recurrenceContainer}>
-                        {renderRecurrenceButtons()}
-                    </View>
-                </View>
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text style={styles.textTag}>Description</Text>
-                    </View>
-                    <View style={styles.inputContainerDescription}>
-                        {/* Add input for description */}
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter your description"
-                            onChangeText={(text) => setDescription(text)}
-                            value={description}
-                        />
-                    </View>
-                </View>
-            </View>
 
 
 

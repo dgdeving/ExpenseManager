@@ -3,8 +3,8 @@ import { useState, useRef } from 'react';
 import { Button, StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import ReturnIcon from "./../assets/Icons/return_icon.svg";
-import uploadImage from "../Data/UploadService";
-import postUrlToApi from "../Data/ApiCallerService";
+import uploadImage from "../NetworkCalls/UploadService";
+import postUrlToApi from "../NetworkCalls/ApiCallerService";
 
 import { deleteFolder } from '../FileSystem/FolderOP'
 
@@ -36,23 +36,11 @@ const CameraComponent = ({ navigation }) => {
   }
 
   const takePicture = async () => {
-    //console.log(cameraRef.current);
     if (cameraRef.current) {
       const options = { quality: 0.5, base64: true, skipProcessing: true };
       const photo = await cameraRef.current.takePictureAsync(options);
       console.log(photo.uri); // Log the image URI to the console
       setImageUri(photo.uri); // Set the image URI to display the picture
-
-      // logic moved to processPicture
-      // try {
-      //   const downloadURL = await uploadImage(photo.uri);
-      //   console.log('Download URL:', downloadURL);
-
-      //   const apiResponse = await postUrlToApi(downloadURL);
-      //   console.log('API Response:', apiResponse);
-      // } catch (error) {
-      //   console.error('Error during upload or API call:', error);
-      // }
     }
   };
 
@@ -96,7 +84,6 @@ const CameraComponent = ({ navigation }) => {
               <Text style={styles.returnButtonText}>ProcessPicture</Text>
             </TouchableOpacity>
           </View>
-
         </View>
       ) : (
         <Camera ref={cameraRef} style={styles.camera} type={type}>

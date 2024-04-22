@@ -2,8 +2,8 @@ import { StyleSheet, Text, View } from 'react-native'
 import React from 'react'
 import CameraComponent from '../Camera/CameraComponent'
 
-const CameraScreen = ({ navigation }) => {
+const CreatePicture = ({ navigation }) => {
     return <CameraComponent navigation={navigation} />;
 }
 
-export default CameraScreen;
+export default CreatePicture;

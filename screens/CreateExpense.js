@@ -1,25 +1,90 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import ExpenseRepository from '../Data/Repositories/ExpenseRepository';
 import CategoryRepository from '../Data/Repositories/CategoryRepository';
-import RecurrenceRepository from '../Data/Repositories/RecurrenceRepository';
+import ReoccurrenceRepository from '../Data/Repositories/RecurrenceRepository';
 import React, { useEffect, useState } from 'react';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { categoryUIObjects } from '../constants/categoryTypes';
+import { recurrenceUIObjects } from '../constants/recurrenceTypes';
+import dateUtils from '../utils/dateUtils';
+import NavigationCreateExpenseMenu from "../UI/NavigationCreateExpenseMenu"
+import ExpenseForm from "../UI/ExpenseForm"
 
+const CreateExpense = ({ navigation, route }) => {
 
-
-const CreateExpense = ({ navigation }) => {
     const [categories, setCategories] = useState([]);
     const [recurrences, setRecurrences] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [selectedRecurrence, setSelectedRecurrence] = useState(null);
-    const [description, setDescription] = useState(null);
+    const [selectedUICategory, setSelectedUICategory] = useState(null);
+    const [selectedUIRecurrence, setSelectedUIRecurrence] = useState(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [amount, setAmount] = useState(null);
+    const [description, setDescription] = useState(null);
+    const [categoryUIMapping, setCategoryUIMapping] = useState({});
+    const [recurrenceUIMapping, setRecurrenceUIMapping] = useState({});
 
-    const showDatepicker = () => {
-        setShowDatePicker(true);
+    //const receipt = useState(route.params?.receipt || {});
+
+    useEffect(() => {
+        console.log("UseEffect route.params: ", route.params);
+        if (route.params?.receipt) {
+            const { Date, Merchant, Total } = route.params.receipt;
+            setDescription(Merchant || '');
+            setAmount(Total?.replace(',', '.') || '');  // Replace commas with dots for consistency in amount
+            setSelectedDate(dateUtils(Date));
+        }
+    }, [route.params]);
+
+    useEffect(() => {
+        fetchCategories();
+        fetchRecurrences();
+    }, []);
+
+    useEffect(() => {
+        if (categories.length > 0) {
+            const mappedCategories = mapCategories(categoryUIObjects, categories);
+            setCategoryUIMapping(mappedCategories);
+        }
+    }, [categories]);
+
+    useEffect(() => {
+        if (recurrences.length > 0) {
+            const mappedRecurrences = mapRecurrences(recurrenceUIObjects, recurrences);
+            setRecurrenceUIMapping(mappedRecurrences);
+        }
+    }, [recurrences]);
+
+
+    const renderCategoryIcons = () => {
+        return categoryUIObjects.map((category) => (
+            <TouchableOpacity
+                key={category.id}
+                style={[
+                    styles.categoryIcon,
+                    selectedUICategory === category.id && styles.selectedCategoryIcon
+                ]}
+                onPress={() => setSelectedUICategory(category.id)}
+            >
+                {category.icon}
+            </TouchableOpacity>
+        ));
+    };
+
+    const renderRecurrenceButtons = () => {
+        //console.log(recurrence);
+        return recurrenceUIObjects.map((recurrence) => (
+            <TouchableOpacity
+                key={recurrence.id}
+                style={[
+                    styles.recurrenceButton,
+                    selectedUIRecurrence === recurrence.id && styles.selectedRecurrenceButton
+                ]}
+                onPress={() => setSelectedUIRecurrence(recurrence.id)}
+            >
+                <Text style={[styles.recurrenceButtonText, selectedUIRecurrence === recurrence.id && styles.selectedRecurrenceText]}>
+                    {recurrence.label}
+                </Text>
+            </TouchableOpacity>
+        ));
     };
 
     const handleDateChange = (event, selectedDate) => {
@@ -28,11 +93,6 @@ const CreateExpense = ({ navigation }) => {
             setSelectedDate(selectedDate);
         }
     };
-
-    useEffect(() => {
-        fetchCategories();
-        fetchRecurrences();
-    }, []);
 
     const fetchCategories = async () => {
         try {
@@ -45,17 +105,53 @@ const CreateExpense = ({ navigation }) => {
 
     const fetchRecurrences = async () => {
         try {
-            const recurrencesData = await RecurrenceRepository.getAllRecurrences();
+            const recurrencesData = await ReoccurrenceRepository.getAllRecurrences();
             setRecurrences(recurrencesData);
+            //console.log(recurrencesData)
         } catch (error) {
             console.error('Error fetching recurrences:', error);
         }
     };
 
-    const addExpense = async (description, selectedDate, amount, categoryId, reoccurrenceId) => {
+    const mapCategories = (uiObjects, fetchedCategories) => {
+        return fetchedCategories.reduce((mapping, fetchedCategory) => {
+            const matchedUIObject = uiObjects.find(
+                (uiCategory) => uiCategory.label.toLowerCase() === fetchedCategory.name.toLowerCase()
+            );
+
+            if (matchedUIObject) {
+                mapping[matchedUIObject.id] = fetchedCategory.id;
+            }
+            //console.log(mapping);
+            return mapping;
+        }, {});
+    };
+
+    const mapRecurrences = (uiObjects, fetchedRecurrences) => {
+        return fetchedRecurrences.reduce((mapping, fetchedRecurrence) => {
+
+            if (fetchedRecurrence.type) {
+                const matchedUIObject = uiObjects.find(
+                    (uiRecurrence) => uiRecurrence.label.toLowerCase() === fetchedRecurrence.type.toLowerCase()
+                );
+
+                if (matchedUIObject) {
+                    mapping[matchedUIObject.id] = fetchedRecurrence.id;
+                }
+            }
+            return mapping;
+        }, {});
+    };
+
+    const addExpense = async (description, selectedDate, amount, categoryUIId, recurrenceUIId) => {
+        console.log(selectedDate);
+        const mappedCategoryId = categoryUIMapping[categoryUIId];
+        const mappedRecurrenceId = recurrenceUIMapping[recurrenceUIId];
+
         const formattedDate = selectedDate.toISOString().split('T')[0];
+
         try {
-            const insertedId = await ExpenseRepository.createExpense(description, formattedDate, amount, categoryId, reoccurrenceId);
+            const insertedId = await ExpenseRepository.createExpense(description, formattedDate, amount, mappedCategoryId, mappedRecurrenceId);
             console.log('Inserted expense ID:', insertedId);
             if (insertedId) {
                 navigation.navigate('Expenses');
@@ -65,112 +161,32 @@ const CreateExpense = ({ navigation }) => {
         }
     };
 
-
-
-
-
-
-
     return (
         <View style={styles.container}>
-            <View>
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text>Amount</Text>
-                    </View>
-                    <View style={styles.inputContainer}>
-                        {/* Add input for amount */}
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter amount"
-                            keyboardType="numeric"
-                            onChangeText={(text) => setAmount(text)}
-                        />
-                    </View>
-                </View>
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text>Description</Text>
-                    </View>
-                    <View style={styles.inputContainer}>
-                        {/* Add input for description */}
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Enter description"
-                            onChangeText={(text) => setDescription(text)}
-                        />
-                    </View>
-                </View>
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text>Date</Text>
-                    </View>
-                    <View style={styles.inputContainer}>
-                        <TouchableOpacity onPress={showDatepicker} >
-                            <Text style={[styles.input, { textAlignVertical: 'center' }]}>{selectedDate.toLocaleDateString()}</Text>
-                        </TouchableOpacity>
-                        {showDatePicker && (
-                            <DateTimePicker
-                                value={selectedDate}
-                                mode="date"
-                                display="default"
-                                onChange={handleDateChange}
-                            />
-                        )}
-                    </View>
-                </View>
-
-
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text>Category</Text>
-                    </View>
-                    <Picker
-                        selectedValue={selectedCategory}
-                        onValueChange={(itemValue) => setSelectedCategory(itemValue)}
-                        style={styles.pickerContainer}>
-
-                        {categories.map((category) => (
-                            <Picker.Item key={category.id} label={category.name} value={category.id} style={styles.picker} />
-                        ))}
-                    </Picker>
-                </View>
-
-                <View style={styles.rowContainer}>
-                    <View style={styles.tagContainer}>
-                        <Text>Reoccurence</Text>
-                    </View>
-                    <Picker
-                        selectedValue={selectedRecurrence}
-                        onValueChange={(itemValue) => setSelectedRecurrence(itemValue)}
-                        style={styles.pickerContainer}>
-                        {recurrences.map((recurrence) => (
-                            <Picker.Item key={recurrence.id} label={recurrence.type} value={recurrence.id} style={styles.picker} />
-                        ))}
-                    </Picker>
-                </View>
-            </View>
-
+            <NavigationCreateExpenseMenu navigation={navigation} />
+            <ExpenseForm
+                amount={amount}
+                setAmount={(text) => setAmount(text)}
+                selectedDate={selectedDate}
+                showDatePicker={showDatePicker}
+                setShowDatePicker={setShowDatePicker}
+                handleDateChange={handleDateChange}
+                renderCategoryIcons={renderCategoryIcons}
+                renderRecurrenceButtons={renderRecurrenceButtons}
+                description={description}
+                setDescription={setDescription}
+            />
             <View style={styles.footer}>
                 <TouchableOpacity style={styles.button}
                     onPress={() => {
-                        addExpense(description, selectedDate, amount, selectedCategory, selectedRecurrence);
+                        addExpense(description, selectedDate, amount, selectedUICategory, selectedUIRecurrence);
                     }}>
-                    <Text style={styles.buttonText}>Add</Text>
+                    <Text style={styles.buttonText}>SAVE</Text>
                 </TouchableOpacity>
             </View>
-
         </View>
     );
 };
-
-
-
-
-
 
 export default CreateExpense
 
@@ -179,78 +195,54 @@ const styles = StyleSheet.create({
         flex: 1,
         alignContent: 'center',
         justifyContent: 'center',
-
+        marginLeft: 30,
+        marginRight: 30,
     },
-
-    header: {
-        marginBottom: 50,
-        alignItems: 'center', // Center items horizontally
-    },
-
-    footer: {
-        marginTop: 50,
-        alignItems: 'center', // Center items horizontally
-    },
-
-    headerText: {
-        fontWeight: 'bold',
-        fontSize: 16,
-    },
-    rowContainer: {
-
-        flexDirection: 'row',
-        alignItems: 'center',
-        //justifyContent: 'center', // Center items horizontally
-        marginBottom: 20,
-        paddingHorizontal: 50, // Padding for inner content
-
-    },
-
-    inputContainer: {
-        flex: 1,
-        backgroundColor: 'lightgray',
-        //borderRadius: 8,
-        marginHorizontal: 20,
-        justifyContent: 'center',
-        paddingHorizontal: 10,
-
-    },
-    input: {
-        height: 40,
-        color: 'black',
-    },
-    tagContainer: {
-        width: 100
-    },
-    pickerContainer: {
-        width: 150, // Set the width of the picker container
-        height: 40, // Set the height of the picker container
-        borderRadius: 8, // Optional border radius
-        backgroundColor: 'lightgray', // Optional background color
-        marginHorizontal: 20, // Adjust margin if needed
-
-    },
-    picker: {
-        width: '100%', // Ensure picker fills the container
-        height: '100%', // Ensure picker fills the container
-        color: 'black', // Optional text color
-        fontSize: 14
-    },
-
-    button: {
+    categoryIcon: {
+        borderWidth: 2,
+        borderColor: 'transparent',
         borderRadius: 50,
-        backgroundColor: "#f86464",
-        width: 200,
-        height: 50,
-        justifyContent: "center",
-        alignItems: "center",
-        elevation: 5,
-        marginBottom: 20,
+        padding: 5,
+        backgroundColor: "white"
     },
-
+    selectedCategoryIcon: {
+        //borderColor: '#f14258',
+        backgroundColor: "#f14258"// Change border color for selected category
+    },
+    recurrenceButton: {
+        borderWidth: 2,
+        borderColor: 'transparent',
+        borderRadius: 50,
+        paddingVertical: 8,
+        paddingHorizontal: 15,
+        backgroundColor: 'white',
+        width: 80, // Set the width for the buttons
+    },
+    recurrenceButtonText: {
+        color: 'black',
+        //fontWeight: 'bold',
+        textAlign: 'center', // Center the text inside the button
+    },
+    selectedRecurrenceButton: {
+        backgroundColor: '#f14258',
+    },
+    selectedRecurrenceText: {
+        color: 'white', // Change text color to white when selected
+    },
+    footer: {
+        //backgroundColor: "grey",
+        marginTop: 20,
+    },
+    button: {
+        backgroundColor: '#f14258',
+        borderRadius: 20,
+        height: 30,
+        justifyContent: 'center',
+        alignItems: "center"
+    },
     buttonText: {
         color: "white",
-        fontWeight: 'bold',
-
+        fontWeight: 'bold', // Make the text bold
     }
+
 })

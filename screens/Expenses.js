@@ -1,13 +1,12 @@
 import { StyleSheet, Text, View, FlatList, TouchableOpacity, ScrollView, processColor } from 'react-native';
 import React, { useEffect, useState } from 'react';
 import ExpenseRepository from '../Data/Repositories/ExpenseRepository';
-import { categoryUIObjects } from '../UI/CategoryIcons';
+import { categoryUIObjects } from '../constants/categoryTypes';
 import RonLogo from "./../assets/Logo/RON.svg";
 import EditIcon from "../assets/Icons/edit_icon.svg";
 import DeleteIcon from "../assets/Icons/delete_icon.svg";
-import CalendarLogo from "../assets/Icons/calendar_icon2.svg";
 import PieChart from '../UI/PieChartComponent';
-import postData from './../NetworkRequest/postData';
+import postData from './../NetworkCalls/postData';
 import BarChart from "../UI/BarChartComponent";
 import { useFocusEffect } from '@react-navigation/native';
 import CalendarMenu from '../UI/CalendarMenu'
@@ -23,7 +22,6 @@ const Expenses = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [totalAmount, setTotalAmount] = useState(0);
     const [selectedMonth, setSelectedMonth] = useState(months[currentMonthIndex]);
-    //used to retrieve expenses with parameter "YEAR-MM"
     const [selectedMonthIndex, setSelectedMonthIndex] = useState(currentMonthIndex + 1);
 
 
@@ -93,7 +91,6 @@ const Expenses = ({ navigation }) => {
         try {
             const allExpensesByMonth = await ExpenseRepository.getAllExpensesWithDetailsByMonth(`2024-${formattedMonth}`);
             setExpenses(allExpensesByMonth);
-            //console.log(allExpenses);
         } catch (error) {
             console.error('Error fetching expenses:', error);
         } finally {
@@ -234,33 +231,6 @@ const Expenses = ({ navigation }) => {
 
     return (
         <View style={styles.container}>
-
-            {/* <View style={styles.calendarMenu}>
-                <View style={styles.titleBar}>
-                    <Text style={styles.titleText}>Expenses</Text>
-                    <View style={styles.currentDateContainer}>
-                        <Text style={styles.currentYearText}>2024</Text>
-                        <CalendarLogo />
-                    </View>
-                </View>
-                <ScrollView style={styles.monthsArray} horizontal={true} showsHorizontalScrollIndicator={false}>
-                    {months.map((month, index) => (
-                        <TouchableOpacity
-                            key={index}
-                            onPress={() => { setSelectedMonth(month); setSelectedMonthIndex(index + 1); }} // Update selected month state on press
-                        >
-                            <Text
-                                style={[
-                                    styles.monthText,
-                                    selectedMonth === month && styles.selectedMonthText // Apply selected text style if month is selected
-                                ]}
-                            >
-                                {month}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View> */}
 
             <CalendarMenu
                 months={months}
